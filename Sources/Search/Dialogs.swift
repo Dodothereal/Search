@@ -244,14 +244,38 @@ enum Dialogs {
     }
 
     /// Where a self-signed certificate is an ordinary thing to meet.
+    ///
+    /// Loopback, and only loopback: this Mac talking to itself, where there
+    /// is nobody in the middle to impersonate, so a certificate has nothing
+    /// to prove. That is `localhost` (and the `.localhost` name RFC 6761
+    /// reserves for the same thing), `127.0.0.1`, `::1` and `0.0.0.0`.
+    ///
+    /// Everything else is a name somebody else can answer for, and is asked
+    /// about like any other site (see `trust`). A `.local` name and a private
+    /// address are not evidence of anything: mDNS, LLMNR and ARP are all
+    /// unauthenticated, so anyone on the same wire can answer for `nas.local`
+    /// or `192.168.1.1` with a certificate of their own and have the page
+    /// that arrives handed over as the real thing, without a word. The
+    /// comment this replaces took those on trust as well, because that is
+    /// where self-signed certificates are usually met — they are still met
+    /// there, the person is simply told which host is being accepted, once.
+    ///
+    /// Every test is on the whole name. What it must never match is a public
+    /// domain that merely begins like something local — which is what this
+    /// used to do: `compactMap` threw away whatever would not parse as a
+    /// number, so `10.0.0.1.evil.com` left `[10, 0, 0, 1]` behind and was
+    /// taken for a private address. That name can simply be registered, and
+    /// it would have been trusted without a word. A `.local` or `.localhost`
+    /// suffix was matched that loosely too; `.localhost` stays, because RFC
+    /// 6761 reserves it for loopback and it cannot resolve anywhere else.
     static func isLocal(_ host: String) -> Bool {
-        if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".localhost") { return true }
-        if host == "127.0.0.1" || host == "::1" || host == "0.0.0.0" { return true }
-        let parts = host.split(separator: ".").compactMap { Int($0) }
-        guard parts.count == 4 else { return false }
-        if parts[0] == 10 { return true }
-        if parts[0] == 192, parts[1] == 168 { return true }
-        if parts[0] == 172, (16...31).contains(parts[1]) { return true }
-        return false
+        // A bracketed IPv6 authority arrives with its brackets; the address
+        // itself is what is asked about.
+        let name = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        return name == "localhost"
+            || name.hasSuffix(".localhost")
+            || name == "127.0.0.1"
+            || name == "::1"
+            || name == "0.0.0.0"
     }
 }
