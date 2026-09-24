@@ -324,18 +324,9 @@ final class Passkeys: NSObject {
     static func fits(_ rp: String, _ host: String) -> Bool {
         if rp == host { return true }
         let address = host.contains(":") || host.allSatisfy { $0.isNumber || $0 == "." }
-        guard !address, host.hasSuffix("." + rp), rp.contains("."), let suffix = publicSuffix else { return false }
-        return !suffix(rp as CFString)
+        guard !address, host.hasSuffix("." + rp), rp.contains(".") else { return false }
+        return !PublicSuffix.isSuffix(rp)
     }
-
-    /// WebKit's own test for a public suffix, from the list macOS keeps.
-    /// Private to CFNetwork: without it, a page's own host is the only
-    /// relying party it gets.
-    private static let publicSuffix: (@convention(c) (CFString) -> Bool)? = {
-        guard let symbol = dlsym(dlopen("/System/Library/Frameworks/CFNetwork.framework/CFNetwork", RTLD_NOW), "_CFHostIsDomainTopLevel")
-        else { return nil }
-        return unsafeBitCast(symbol, to: (@convention(c) (CFString) -> Bool).self)
-    }()
 
     // MARK: - bytes
 

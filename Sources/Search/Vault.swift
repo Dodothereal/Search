@@ -182,16 +182,21 @@ enum Vault {
     // MARK: - the site behind a host
 
     /// example.com for www.example.com and accounts.example.com; bbc.co.uk
-    /// stays bbc.co.uk. The handful of two-part endings that matter here are
-    /// listed; a full public suffix list would be a library for a corner.
+    /// stays bbc.co.uk.
+    ///
+    /// The name is the host's own labels down to, but not including, the
+    /// public suffix — and the suffix is the one macOS keeps, not a list of
+    /// two-part endings kept here by hand. That distinction is the whole
+    /// point: `github.io`, `blogspot.com`, `web.app` and `herokuapp.com` are
+    /// suffixes anyone can register a name under, so `alice.github.io` and
+    /// `evil.github.io` are two different sites and a password saved for one
+    /// must not be offered to the other. A hand-kept list cannot know them;
+    /// the system's own list does (see PublicSuffix).
+    ///
+    /// An address is not a name with a site behind it and is returned as it
+    /// stands, so `192.168.1.5` does not reduce to `1.5`.
     static func registrable(_ host: String) -> String {
-        let labels = host.lowercased().split(separator: ".").map(String.init)
-        guard labels.count > 2 else { return labels.joined(separator: ".") }
-        let seconds: Set<String> = ["co", "com", "org", "net", "gov", "gouv", "ac", "edu", "asso", "or", "ne"]
-        if seconds.contains(labels[labels.count - 2]), labels[labels.count - 1].count == 2 {
-            return labels.suffix(3).joined(separator: ".")
-        }
-        return labels.suffix(2).joined(separator: ".")
+        PublicSuffix.registrable(host)
     }
 
     static func host(of text: String) -> String {
